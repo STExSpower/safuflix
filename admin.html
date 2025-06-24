@@ -53,8 +53,8 @@
         <label>Season:
           <input type="number" id="season" min="1" value="1">
         </label>
-        <label>Episodes (one per line, format: Episode Title | Video URL):
-          <textarea id="episodes" rows="4" placeholder="Episode 1 | https://..."></textarea>
+        <label>Episodes (one per line, just paste links!):
+          <textarea id="episodes" rows="4" placeholder="https://link1.com/ep1.mp4&#10;https://link2.com/ep2.mp4"></textarea>
         </label>
       </div>
       <label>Cast & Crew:
@@ -171,11 +171,15 @@
       let season = null, episodes = [];
       if (type === 'series') {
         season = parseInt(document.getElementById('season').value, 10);
-        // Parse episodes
+        // Parse episodes (automation: if no |, auto-title as "Episode N")
         const epLines = document.getElementById('episodes').value.trim().split('\n');
-        episodes = epLines.filter(Boolean).map(line => {
-          const [epTitle, epUrl] = line.split('|').map(s => s.trim());
-          return { epTitle, epUrl };
+        episodes = epLines.filter(Boolean).map((line, idx) => {
+          if (line.includes('|')) {
+            const [epTitle, epUrl] = line.split('|').map(s => s.trim());
+            return { epTitle, epUrl };
+          } else {
+            return { epTitle: `Episode ${idx + 1}`, epUrl: line.trim() };
+          }
         });
       }
       // Merge genre/poster with fetchedMeta
@@ -284,7 +288,11 @@
       if (m.type === 'series') {
         document.getElementById('seriesFields').style.display = 'block';
         document.getElementById('season').value = m.season || 1;
-        document.getElementById('episodes').value = m.episodes.map(ep => `${ep.epTitle} | ${ep.epUrl}`).join('\n');
+        // If all episode titles are "Episode N", show only links for easier edit
+        let allAuto = m.episodes.every((ep, idx) => ep.epTitle === `Episode ${idx + 1}`);
+        document.getElementById('episodes').value = allAuto
+          ? m.episodes.map(ep => ep.epUrl).join('\n')
+          : m.episodes.map(ep => `${ep.epTitle} | ${ep.epUrl}`).join('\n');
       } else {
         document.getElementById('seriesFields').style.display = 'none';
         document.getElementById('season').value = 1;
