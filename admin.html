@@ -85,6 +85,7 @@
 
     let movies = JSON.parse(localStorage.getItem('movies') || '[]');
     let fetchedMeta = null;
+    let editIndex = null; // Track which movie is being edited
 
     function saveMovies() {
       localStorage.setItem('movies', JSON.stringify(movies));
@@ -145,6 +146,13 @@
           if (data.Poster && !document.getElementById('poster').value) {
             document.getElementById('poster').value = data.Poster;
           }
+          // Auto-fill cast table with actor names
+          if (data.Actors) {
+            document.getElementById('castTbody').innerHTML = '';
+            data.Actors.split(',').forEach(actor => {
+              addCastRow(actor.trim(), '', '');
+            });
+          }
         })
         .catch(() => {
           document.getElementById('metaResult').innerHTML = "Error fetching metadata!";
@@ -182,7 +190,16 @@
           cast.push({ name: tds[0].value.trim(), role: tds[1].value.trim(), img: tds[2].value.trim() });
         }
       });
-      movies.push({ type, title, url, season, episodes, visible, meta, cast });
+
+      if (editIndex !== null) {
+        // Update existing
+        movies[editIndex] = { type, title, url, season, episodes, visible, meta, cast };
+        editIndex = null;
+        document.getElementById('addForm').querySelector('button[type="submit"]').textContent = "Add";
+      } else {
+        // Add new
+        movies.push({ type, title, url, season, episodes, visible, meta, cast });
+      }
       saveMovies();
       this.reset();
       document.getElementById('seriesFields').style.display = 'none';
@@ -207,6 +224,7 @@
               <input type="checkbox" onchange="toggleVisible(${i})" ${m.visible ? 'checked' : ''}>
               Visible
             </label>
+            <button onclick="editMovie(${i})">Edit</button>
             <button onclick="removeMovie(${i})" style="float:right;">Delete</button>
             ${m.cast && m.cast.length ? `
               <div class="episode-list">
@@ -251,6 +269,36 @@
         saveMovies();
         renderAdminList();
       }
+    }
+
+    // EDIT FEATURE
+    function editMovie(i) {
+      const m = movies[i];
+      editIndex = i;
+      document.getElementById('type').value = m.type;
+      document.getElementById('title').value = m.title;
+      document.getElementById('url').value = m.url;
+      document.getElementById('visible').checked = m.visible;
+      document.getElementById('genre').value = m.meta && m.meta.genre ? m.meta.genre : '';
+      document.getElementById('poster').value = m.meta && m.meta.poster ? m.meta.poster : '';
+      if (m.type === 'series') {
+        document.getElementById('seriesFields').style.display = 'block';
+        document.getElementById('season').value = m.season || 1;
+        document.getElementById('episodes').value = m.episodes.map(ep => `${ep.epTitle} | ${ep.epUrl}`).join('\n');
+      } else {
+        document.getElementById('seriesFields').style.display = 'none';
+        document.getElementById('season').value = 1;
+        document.getElementById('episodes').value = '';
+      }
+      // Cast
+      document.getElementById('castTbody').innerHTML = '';
+      if (m.cast && m.cast.length) {
+        m.cast.forEach(c => addCastRow(c.name, c.role, c.img));
+      }
+      // Set button text to "Update"
+      document.getElementById('addForm').querySelector('button[type="submit"]').textContent = "Update";
+      // Scroll to form
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     // Initial render
