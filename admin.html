@@ -19,6 +19,10 @@
     .episode-list { margin-left: 20px; }
     .meta-img { max-width: 120px; border-radius: 6px; margin-top: 10px;}
     .meta-info { color: #ffb300; font-size: 15px; margin-top: 5px;}
+    .cast-table { width: 100%; margin-top: 10px; }
+    .cast-table input { width: 90%; }
+    .cast-table th, .cast-table td { padding: 4px 6px; }
+    .cast-img-preview { width: 40px; height: 40px; object-fit: cover; border-radius: 5px; }
   </style>
 </head>
 <body>
@@ -39,6 +43,9 @@
       <label>Genre/Category (comma separated):
         <input type="text" id="genre" placeholder="e.g. Action, Drama">
       </label>
+      <label>Poster URL (optional):
+        <input type="text" id="poster" placeholder="https://...">
+      </label>
       <label>Video URL (for Movie or for Series Trailer):
         <input type="text" id="url" required>
       </label>
@@ -50,6 +57,15 @@
           <textarea id="episodes" rows="4" placeholder="Episode 1 | https://..."></textarea>
         </label>
       </div>
+      <label>Cast & Crew:
+        <table class="cast-table" id="castTable">
+          <thead>
+            <tr><th>Name</th><th>Role</th><th>Image URL</th><th></th></tr>
+          </thead>
+          <tbody id="castTbody"></tbody>
+        </table>
+        <button type="button" onclick="addCastRow()">+ Add Cast</button>
+      </label>
       <label>
         <input type="checkbox" id="visible" checked>
         Visible to users
@@ -79,6 +95,19 @@
         document.getElementById('type').value === 'series' ? 'block' : 'none';
     }
 
+    // Cast table logic
+    function addCastRow(name='', role='', img='') {
+      const tbody = document.getElementById('castTbody');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="text" value="${name}"></td>
+        <td><input type="text" value="${role}"></td>
+        <td><input type="text" value="${img}"></td>
+        <td><button type="button" onclick="this.closest('tr').remove()">🗑️</button></td>
+      `;
+      tbody.appendChild(tr);
+    }
+
     // Fetch metadata from OMDb
     function fetchMetadata() {
       const title = document.getElementById('title').value.trim();
@@ -101,7 +130,8 @@
             plot: data.Plot,
             genre: data.Genre,
             imdb: data.imdbRating,
-            runtime: data.Runtime
+            runtime: data.Runtime,
+            director: data.Director
           };
           document.getElementById('metaResult').innerHTML = `
             <img src="${data.Poster}" class="meta-img"><br>
@@ -111,6 +141,9 @@
           // Auto-fill genre field if empty
           if (data.Genre && !document.getElementById('genre').value) {
             document.getElementById('genre').value = data.Genre;
+          }
+          if (data.Poster && !document.getElementById('poster').value) {
+            document.getElementById('poster').value = data.Poster;
           }
         })
         .catch(() => {
@@ -126,6 +159,7 @@
       const url = document.getElementById('url').value.trim();
       const visible = document.getElementById('visible').checked;
       const genre = document.getElementById('genre').value.trim();
+      const poster = document.getElementById('poster').value.trim();
       let season = null, episodes = [];
       if (type === 'series') {
         season = parseInt(document.getElementById('season').value, 10);
@@ -136,14 +170,24 @@
           return { epTitle, epUrl };
         });
       }
-      // Merge genre with fetchedMeta
+      // Merge genre/poster with fetchedMeta
       let meta = fetchedMeta ? {...fetchedMeta} : {};
       if (genre) meta.genre = genre;
-      movies.push({ type, title, url, season, episodes, visible, meta });
+      if (poster) meta.poster = poster;
+      // Cast
+      const cast = [];
+      document.querySelectorAll('#castTbody tr').forEach(tr => {
+        const tds = tr.querySelectorAll('input');
+        if (tds[0].value.trim()) {
+          cast.push({ name: tds[0].value.trim(), role: tds[1].value.trim(), img: tds[2].value.trim() });
+        }
+      });
+      movies.push({ type, title, url, season, episodes, visible, meta, cast });
       saveMovies();
       this.reset();
       document.getElementById('seriesFields').style.display = 'none';
       document.getElementById('metaResult').innerHTML = '';
+      document.getElementById('castTbody').innerHTML = '';
       fetchedMeta = null;
       renderAdminList();
     };
@@ -164,6 +208,19 @@
               Visible
             </label>
             <button onclick="removeMovie(${i})" style="float:right;">Delete</button>
+            ${m.cast && m.cast.length ? `
+              <div class="episode-list">
+                <b>Cast:</b>
+                <ol>
+                  ${m.cast.map(c => `
+                    <li>
+                      <b>${c.name}</b> (${c.role})<br>
+                      ${c.img ? `<img src="${c.img}" class="cast-img-preview">` : ''}
+                    </li>
+                  `).join('')}
+                </ol>
+              </div>
+            ` : ''}
             ${m.type === 'series' && m.episodes && m.episodes.length ? `
               <div class="episode-list">
                 <b>Episodes:</b>
