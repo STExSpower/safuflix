@@ -21,14 +21,14 @@
     .categories button.active, .categories button:hover { background: #e50914; }
     .grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 30px; }
     .card {
-      background: #222; border-radius: 12px; width: 260px; box-shadow: 0 2px 8px #0008;
-      overflow: hidden; display: flex; flex-direction: column; margin-bottom: 30px;
+      background: #222; border-radius: 12px; width: 220px; box-shadow: 0 2px 8px #0008;
+      overflow: hidden; display: flex; flex-direction: column; margin-bottom: 30px; cursor: pointer;
       transition: transform 0.2s;
     }
     .card:hover { transform: scale(1.04); }
-    .poster { width: 100%; height: 370px; object-fit: cover; background: #111; }
-    .card-content { padding: 15px; flex: 1; display: flex; flex-direction: column; }
-    .title { font-size: 1.2em; font-weight: bold; margin-bottom: 5px; }
+    .poster { width: 100%; height: 320px; object-fit: cover; background: #111; }
+    .card-content { padding: 12px; flex: 1; display: flex; flex-direction: column; }
+    .title { font-size: 1.1em; font-weight: bold; margin-bottom: 5px; }
     .meta { color: #ffb300; font-size: 0.95em; margin-bottom: 8px; }
     .plot { font-size: 0.98em; color: #ccc; margin-bottom: 10px; }
     .actions { margin-top: auto; }
@@ -37,14 +37,71 @@
       margin-right: 7px; margin-bottom: 7px; cursor: pointer; font-size: 0.98em; text-decoration: none; display: inline-block;
     }
     .actions button:hover, .actions a:hover { background: #b0060f; }
+    /* Detail modal */
+    .modal-bg {
+      display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1000;
+      background: rgba(0,0,0,0.7);
+      align-items: center; justify-content: center;
+    }
+    .modal-bg.active { display: flex; }
+    .modal-content {
+      background: #222d; border-radius: 18px; max-width: 1100px; width: 98vw; max-height: 95vh; overflow-y: auto;
+      box-shadow: 0 8px 32px #000a; position: relative; display: flex; gap: 40px; padding: 40px 30px;
+      margin: 0 auto;
+    }
+    .modal-blur-bg {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background-size: cover; background-position: center;
+      filter: blur(18px) brightness(0.5); z-index: -1;
+    }
+    .modal-poster { width: 320px; border-radius: 18px; box-shadow: 0 8px 32px #000a; flex-shrink: 0; }
+    .modal-info { flex: 1; display: flex; flex-direction: column; }
+    .modal-title-row { display: flex; align-items: center; gap: 18px; }
+    .modal-title { font-size: 2.2em; font-weight: 700; letter-spacing: 2px; }
+    .modal-badges { margin: 10px 0; }
+    .modal-badge {
+      display: inline-block; background: #222b; color: #fff; border-radius: 12px; padding: 4px 14px;
+      margin-right: 8px; font-size: 1em; font-weight: 500;
+    }
+    .modal-rating { color: #ffb300; font-weight: bold; }
+    .modal-actions { margin: 18px 0 10px 0; }
+    .modal-actions button, .modal-actions a {
+      background: #e50914; color: #fff; border: none; border-radius: 7px; padding: 9px 18px;
+      margin-right: 10px; font-size: 1em; cursor: pointer; text-decoration: none; display: inline-block;
+      transition: background 0.2s;
+    }
+    .modal-actions button:hover, .modal-actions a:hover { background: #b0060f; }
+    .modal-meta-info { color: #ffb300; margin-bottom: 8px; }
+    .modal-plot { font-size: 1.1em; color: #eee; margin-bottom: 18px; }
+    .modal-director { color: #aaa; margin-bottom: 10px; }
+    .modal-close {
+      position: absolute; top: 18px; right: 24px; font-size: 2.2em; color: #fff; background: none; border: none; cursor: pointer;
+      z-index: 10;
+    }
+    .cast-section, .more-section { margin: 40px 0 0 0; }
+    .section-title { font-size: 1.3em; font-weight: bold; margin-bottom: 15px; }
+    .cast-list, .more-list {
+      display: flex; gap: 18px; overflow-x: auto; padding-bottom: 10px;
+    }
+    .cast-card, .more-card {
+      background: #222c; border-radius: 10px; padding: 10px; width: 120px; text-align: center;
+      flex-shrink: 0;
+    }
+    .cast-img, .more-img {
+      width: 100px; height: 100px; object-fit: cover; border-radius: 8px; margin-bottom: 7px;
+      background: #111;
+    }
+    .cast-name { font-weight: bold; font-size: 1em; }
+    .cast-role { color: #ccc; font-size: 0.95em; }
+    .more-title { font-size: 1em; color: #fff; margin-top: 7px; }
     .episodes { margin-top: 10px; }
     .episode-title { font-weight: bold; color: #fff; }
     .episode-list { list-style: none; padding: 0; margin: 0; }
     .episode-list li { margin-bottom: 10px; background: #181818; border-radius: 6px; padding: 8px; }
-    @media (max-width: 700px) {
-      .grid { flex-direction: column; align-items: center; }
-      .card { width: 95vw; }
-      .poster { height: 220px; }
+    @media (max-width: 900px) {
+      .modal-content, .main-content { flex-direction: column; align-items: center; }
+      .modal-poster, .poster { width: 90vw; max-width: 340px; }
+      .modal-info, .info { width: 100%; }
     }
   </style>
 </head>
@@ -60,6 +117,13 @@
   </div>
   <div class="categories" id="categories"></div>
   <div class="grid" id="movieGrid"></div>
+
+  <!-- Movie Detail Modal -->
+  <div class="modal-bg" id="modalBg">
+    <div class="modal-blur-bg" id="modalBlurBg"></div>
+    <div class="modal-content" id="modalContent"></div>
+  </div>
+
   <script>
     let movies = JSON.parse(localStorage.getItem('movies') || '[]');
     let genres = [];
@@ -102,7 +166,7 @@
       if (genre) {
         filtered = filtered.filter(m => m.meta && m.meta.genre && m.meta.genre.includes(genre));
       }
-      filtered.forEach(m => {
+      filtered.forEach((m, idx) => {
         // Search filter
         let match = false;
         if (filter === "") match = true;
@@ -121,54 +185,20 @@
               <div class="title">${m.title}</div>
               <div class="meta">${m.meta.year ? m.meta.year + ' | ' : ''}${m.meta.genre ? m.meta.genre + ' | ' : ''}${m.meta.imdb ? 'IMDB: ' + m.meta.imdb : ''}</div>
               <div class="plot">${m.meta.plot || ''}</div>
+            </div>
           `;
         } else {
           metaHtml = `
             <div class="poster"></div>
             <div class="card-content">
               <div class="title">${m.title}</div>
-          `;
-        }
-
-        let actionsHtml = '';
-        if (m.type === 'movie') {
-          actionsHtml = `
-            <div class="actions">
-              <a href="${m.url}" target="_blank">Play</a>
-              <a href="${m.url}" download>Download</a>
-              <button onclick="copyLink('${m.url}')">Copy Link</button>
-              <a href="intent://${m.url.replace(/^https?:\/\//, '')}#Intent;type=video/mp4;end">Play with VLC</a>
-            </div>
-          `;
-        } else if (m.type === 'series') {
-          actionsHtml = `
-            <div class="actions">
-              <a href="${m.url}" target="_blank">Play Trailer</a>
-            </div>
-            <div class="episodes">
-              <div class="episode-title">Episodes:</div>
-              <ul class="episode-list">
-                ${m.episodes.map((ep, epi) => `
-                  <li>
-                    <div><b>${ep.epTitle}</b></div>
-                    <div class="actions">
-                      <a href="${ep.epUrl}" target="_blank">Play</a>
-                      <a href="${ep.epUrl}" download>Download</a>
-                      <button onclick="copyLink('${ep.epUrl}')">Copy Link</button>
-                      <a href="intent://${ep.epUrl.replace(/^https?:\/\//, '')}#Intent;type=video/mp4;end">Play with VLC</a>
-                    </div>
-                  </li>
-                `).join('')}
-              </ul>
             </div>
           `;
         }
 
         grid.innerHTML += `
-          <div class="card">
+          <div class="card" onclick="openModal(${idx})">
             ${metaHtml}
-            ${actionsHtml}
-            </div>
           </div>
         `;
       });
@@ -184,6 +214,119 @@
       document.body.removeChild(tempInput);
       alert('Link copied!');
     }
+
+    // Modal logic
+    function openModal(idx) {
+      const m = movies[idx];
+      const modalBg = document.getElementById('modalBg');
+      const modalContent = document.getElementById('modalContent');
+      const modalBlurBg = document.getElementById('modalBlurBg');
+      modalBg.classList.add('active');
+      modalBlurBg.style.backgroundImage = m.meta && m.meta.poster ? `url('${m.meta.poster}')` : '';
+      let badges = '';
+      if (m.meta) {
+        if (m.meta.year) badges += `<span class="modal-badge">${m.meta.year}</span>`;
+        if (m.meta.runtime) badges += `<span class="modal-badge">${m.meta.runtime}</span>`;
+        if (m.meta.genre) m.meta.genre.split(',').forEach(g => badges += `<span class="modal-badge">${g.trim()}</span>`);
+      }
+      let castHtml = '';
+      if (m.cast && m.cast.length) {
+        castHtml = `
+          <div class="cast-section">
+            <div class="section-title">Cast & Crew</div>
+            <div class="cast-list">
+              ${m.cast.map(c => `
+                <div class="cast-card">
+                  <img class="cast-img" src="${c.img || ''}" alt="">
+                  <div class="cast-name">${c.name}</div>
+                  <div class="cast-role">${c.role || ''}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+      let moreHtml = '';
+      // More like this: show 4 other random movies
+      let more = movies.filter((x, i) => i !== idx && x.visible);
+      if (more.length) {
+        more = more.slice(0, 6);
+        moreHtml = `
+          <div class="more-section">
+            <div class="section-title">More Like This</div>
+            <div class="more-list">
+              ${more.map((mm, i) => `
+                <div class="more-card" onclick="openModal(${movies.indexOf(mm)})">
+                  <img class="more-img" src="${mm.meta && mm.meta.poster ? mm.meta.poster : ''}" alt="">
+                  <div class="more-title">${mm.title}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+      let actionsHtml = '';
+      if (m.type === 'movie') {
+        actionsHtml = `
+          <div class="modal-actions">
+            <a href="${m.url}" target="_blank">Play</a>
+            <a href="${m.url}" download>Download</a>
+            <button onclick="copyLink('${m.url}')">Copy Link</button>
+            <a href="intent://${m.url.replace(/^https?:\/\//, '')}#Intent;type=video/mp4;end">VLC</a>
+          </div>
+        `;
+      } else if (m.type === 'series') {
+        actionsHtml = `
+          <div class="modal-actions">
+            <a href="${m.url}" target="_blank">Play Trailer</a>
+          </div>
+          <div class="episodes">
+            <div class="episode-title">Episodes:</div>
+            <ul class="episode-list">
+              ${m.episodes.map((ep, epi) => `
+                <li>
+                  <div><b>${ep.epTitle}</b></div>
+                  <div class="modal-actions">
+                    <a href="${ep.epUrl}" target="_blank">Play</a>
+                    <a href="${ep.epUrl}" download>Download</a>
+                    <button onclick="copyLink('${ep.epUrl}')">Copy Link</button>
+                    <a href="intent://${ep.epUrl.replace(/^https?:\/\//, '')}#Intent;type=video/mp4;end">VLC</a>
+                  </div>
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+        `;
+      }
+      modalContent.innerHTML = `
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <img class="modal-poster" src="${m.meta && m.meta.poster ? m.meta.poster : ''}" alt="">
+        <div class="modal-info">
+          <div class="modal-title-row">
+            <span class="modal-title">${m.title}</span>
+            <span class="modal-rating">${m.meta && m.meta.imdb ? '★ ' + m.meta.imdb : ''}</span>
+            ${badges}
+          </div>
+          ${actionsHtml}
+          <div class="modal-meta-info">
+            ${m.meta && m.meta.runtime ? 'Video: ' + m.meta.runtime + ' | ' : ''}
+            ${m.meta && m.meta.genre ? m.meta.genre + ' | ' : ''}
+            ${m.meta && m.meta.year ? m.meta.year : ''}
+          </div>
+          <div class="modal-plot">${m.meta && m.meta.plot ? m.meta.plot : ''}</div>
+          <div class="modal-director">${m.meta && m.meta.director ? 'Director: ' + m.meta.director : ''}</div>
+          ${castHtml}
+          ${moreHtml}
+        </div>
+      `;
+    }
+    function closeModal() {
+      document.getElementById('modalBg').classList.remove('active');
+    }
+    // Close modal on background click
+    document.getElementById('modalBg').onclick = function(e) {
+      if (e.target === this) closeModal();
+    };
 
     document.getElementById('searchBox').addEventListener('input', function() {
       renderGrid(this.value.trim().toLowerCase(), genreFilter.value);
