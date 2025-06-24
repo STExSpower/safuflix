@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Movie/Series List</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { background: #181818; color: #fff; font-family: Arial; }
+    .container { background: #222; padding: 20px; border-radius: 10px; margin: 20px auto; max-width: 600px;}
+    .movie-list { margin-top: 30px; }
+    .movie-item { background: #333; padding: 10px; border-radius: 6px; margin-bottom: 20px;}
+    .episode-list { margin-left: 20px; }
+    button { padding: 8px 16px; background: #e50914; color: #fff; border: none; border-radius: 5px; cursor: pointer; margin-right: 5px;}
+    button:hover { background: #b0060f;}
+    input[type="text"] { width: 80%; padding: 5px; }
+    #searchBox { width: 100%; padding: 10px; margin-bottom: 20px; font-size: 18px; border-radius: 5px; border: none;}
+    .meta-img { max-width: 120px; border-radius: 6px; margin-top: 10px;}
+    .meta-info { color: #ffb300; font-size: 15px; margin-top: 5px;}
+  </style>
+</head>
+<body>
+  <div class="container movie-list">
+    <h2>Movie/Series List</h2>
+    <input type="text" id="searchBox" placeholder="Search movie, series or episode...">
+    <div id="publicList"></div>
+  </div>
+  <script>
+    let movies = JSON.parse(localStorage.getItem('movies') || '[]');
+
+    function renderPublicList(filter = "") {
+      const publicList = document.getElementById('publicList');
+      publicList.innerHTML = '';
+      movies.filter(m => m.visible).forEach(m => {
+        // Search filter
+        let match = false;
+        if (filter === "") match = true;
+        else if (m.title.toLowerCase().includes(filter)) match = true;
+        // For series, check episode title
+        if (m.type === 'series' && m.episodes) {
+          if (m.episodes.some(ep => ep.epTitle.toLowerCase().includes(filter))) match = true;
+        }
+        if (!match) return;
+
+        let metaHtml = '';
+        if (m.meta) {
+          metaHtml = `
+            ${m.meta.poster ? `<img src="${m.meta.poster}" class="meta-img"><br>` : ''}
+            <span class="meta-info"><b>Year:</b> ${m.meta.year} | <b>Genre:</b> ${m.meta.genre} | <b>IMDB:</b> ${m.meta.imdb} | <b>Runtime:</b> ${m.meta.runtime}</span>
+            <div class="meta-info"><b>Plot:</b> ${m.meta.plot}</div>
+          `;
+        }
+
+        if (m.type === 'movie') {
+          publicList.innerHTML += `
+            <div class="movie-item">
+              <b>${m.title}</b> (Movie)<br>
+              ${metaHtml}
+              <video controls width="100%" style="margin-top:8px;">
+                <source src="${m.url}" type="video/mp4">
+                Not supported.
+              </video>
+              <br>
+              <input type="text" value="${m.url}" readonly id="input-${m.url}">
+              <button onclick="copyLink('${m.url}')">Copy Link</button>
+              <a href="intent://${m.url.replace(/^https?:\/\//, '')}#Intent;type=video/mp4;end">
+                <button>Play with VLC</button>
+              </a>
+            </div>
+          `;
+        } else if (m.type === 'series') {
+          publicList.innerHTML += `
+            <div class="movie-item">
+              <b>${m.title}</b> (Series, Season ${m.season})<br>
+              ${metaHtml}
+              <i>Trailer:</i>
+              <video controls width="100%" style="margin-top:8px;">
+                <source src="${m.url}" type="video/mp4">
+                Not supported.
+              </video>
+              <div class="episode-list">
+                <b>Episodes:</b>
+                <ol>
+                  ${m.episodes.map((ep, epi) => {
+                    if (filter && !ep.epTitle.toLowerCase().includes(filter) && !m.title.toLowerCase().includes(filter)) return '';
+                    return `
+                    <li>
+                      <b>${ep.epTitle}</b><br>
+                      <input type="text" value="${ep.epUrl}" readonly id="input-${m.title.replace(/\s/g,'')}-ep${epi}">
+                      <button onclick="copyLink('${ep.epUrl}')">Copy Link</button>
+                      <a href="intent://${ep.epUrl.replace(/^https?:\/\//, '')}#Intent;type=video/mp4;end">
+                        <button>Play with VLC</button>
+                      </a>
+                    </li>
+                  `}).join('')}
+                </ol>
+              </div>
+            </div>
+          `;
+        }
+      });
+    }
+
+    function copyLink(url) {
+      const tempInput = document.createElement('input');
+      tempInput.value = url;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      tempInput.setSelectionRange(0, 99999);
+      document.execCommand('copy');
+      document.body.removeChild(tempInput);
+      alert('Link copied!');
+    }
+
+    // Search event
+    document.getElementById('searchBox').addEventListener('input', function() {
+      renderPublicList(this.value.trim().toLowerCase());
+    });
+
+    renderPublicList();
+  </script>
+</body>
+</html>

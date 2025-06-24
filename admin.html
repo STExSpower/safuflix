@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Panel - Movie/Series</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { background: #181818; color: #fff; font-family: Arial; }
+    .container { background: #222; padding: 20px; border-radius: 10px; margin: 20px auto; max-width: 600px;}
+    label { display: block; margin-top: 10px; }
+    input, select, textarea { width: 100%; padding: 8px; margin-top: 5px; }
+    button { margin-top: 15px; padding: 10px 20px; background: #e50914; color: #fff; border: none; border-radius: 5px; cursor: pointer;}
+    button:hover { background: #b0060f;}
+    .movie-list { margin-top: 30px; }
+    .movie-item { background: #333; padding: 10px; border-radius: 6px; margin-bottom: 10px;}
+    .hidden { opacity: 0.5; }
+    .admin-title { color: #ffb300; }
+    .episode-list { margin-left: 20px; }
+    .meta-img { max-width: 120px; border-radius: 6px; margin-top: 10px;}
+    .meta-info { color: #ffb300; font-size: 15px; margin-top: 5px;}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2 class="admin-title">Admin Panel: Add Movie/Series</h2>
+    <form id="addForm">
+      <label>Type:
+        <select id="type" onchange="toggleSeriesFields()">
+          <option value="movie">Movie</option>
+          <option value="series">Series</option>
+        </select>
+      </label>
+      <label>Title:
+        <input type="text" id="title" required>
+      </label>
+      <button type="button" onclick="fetchMetadata()">Fetch Metadata</button>
+      <div id="metaResult"></div>
+      <label>Video URL (for Movie or for Series Trailer):
+        <input type="text" id="url" required>
+      </label>
+      <div id="seriesFields" style="display:none;">
+        <label>Season:
+          <input type="number" id="season" min="1" value="1">
+        </label>
+        <label>Episodes (one per line, format: Episode Title | Video URL):
+          <textarea id="episodes" rows="4" placeholder="Episode 1 | https://..."></textarea>
+        </label>
+      </div>
+      <label>
+        <input type="checkbox" id="visible" checked>
+        Visible to users
+      </label>
+      <button type="submit">Add</button>
+    </form>
+  </div>
+
+  <div class="container movie-list">
+    <h2>All Movie/Series (Admin View)</h2>
+    <div id="adminList"></div>
+  </div>
+
+  <script>
+    // === OMDb API KEY ===
+    const OMDB_API_KEY = "95a4bb67"; // <-- Your OMDb API key
+
+    // Movie/Series data will be stored in localStorage for demo
+    let movies = JSON.parse(localStorage.getItem('movies') || '[]');
+    let fetchedMeta = null;
+
+    function saveMovies() {
+      localStorage.setItem('movies', JSON.stringify(movies));
+    }
+
+    function toggleSeriesFields() {
+      document.getElementById('seriesFields').style.display =
+        document.getElementById('type').value === 'series' ? 'block' : 'none';
+    }
+
+    // Fetch metadata from OMDb
+    function fetchMetadata() {
+      const title = document.getElementById('title').value.trim();
+      if (!title) {
+        alert("Title likhun!");
+        return;
+      }
+      document.getElementById('metaResult').innerHTML = "Searching...";
+      fetch(`https://www.omdbapi.com/?t=${encodeURIComponent(title)}&apikey=${OMDB_API_KEY}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.Response === "False") {
+            document.getElementById('metaResult').innerHTML = "No result found!";
+            fetchedMeta = null;
+            return;
+          }
+          fetchedMeta = {
+            poster: data.Poster,
+            year: data.Year,
+            plot: data.Plot,
+            genre: data.Genre,
+            imdb: data.imdbRating,
+            runtime: data.Runtime
+          };
+          document.getElementById('metaResult').innerHTML = `
+            <img src="${data.Poster}" class="meta-img"><br>
+            <span class="meta-info"><b>Year:</b> ${data.Year} | <b>Genre:</b> ${data.Genre} | <b>IMDB:</b> ${data.imdbRating} | <b>Runtime:</b> ${data.Runtime}</span>
+            <div class="meta-info"><b>Plot:</b> ${data.Plot}</div>
+          `;
+        })
+        .catch(() => {
+          document.getElementById('metaResult').innerHTML = "Error fetching metadata!";
+          fetchedMeta = null;
+        });
+    }
+
+    document.getElementById('addForm').onsubmit = function(e) {
+      e.preventDefault();
+      const type = document.getElementById('type').value;
+      const title = document.getElementById('title').value.trim();
+      const url = document.getElementById('url').value.trim();
+      const visible = document.getElementById('visible').checked;
+      let season = null, episodes = [];
+      if (type === 'series') {
+        season = parseInt(document.getElementById('season').value, 10);
+        // Parse episodes
+        const epLines = document.getElementById('episodes').value.trim().split('\n');
+        episodes = epLines.filter(Boolean).map(line => {
+          const [epTitle, epUrl] = line.split('|').map(s => s.trim());
+          return { epTitle, epUrl };
+        });
+      }
+      movies.push({ type, title, url, season, episodes, visible, meta: fetchedMeta });
+      saveMovies();
+      this.reset();
+      document.getElementById('seriesFields').style.display = 'none';
+      document.getElementById('metaResult').innerHTML = '';
+      fetchedMeta = null;
+      renderAdminList();
+    };
+
+    function renderAdminList() {
+      const adminList = document.getElementById('adminList');
+      adminList.innerHTML = '';
+      movies.forEach((m, i) => {
+        adminList.innerHTML += `
+          <div class="movie-item${m.visible ? '' : ' hidden'}">
+            <b>${m.title}</b> (${m.type === 'series' ? 'Series, Season ' + m.season : 'Movie'})<br>
+            ${m.meta && m.meta.poster ? `<img src="${m.meta.poster}" class="meta-img"><br>` : ''}
+            ${m.meta ? `<span class="meta-info"><b>Year:</b> ${m.meta.year} | <b>Genre:</b> ${m.meta.genre} | <b>IMDB:</b> ${m.meta.imdb} | <b>Runtime:</b> ${m.meta.runtime}</span>
+            <div class="meta-info"><b>Plot:</b> ${m.meta.plot}</div>` : ''}
+            <small>${m.type === 'series' ? 'Trailer: ' + m.url : m.url}</small><br>
+            <label>
+              <input type="checkbox" onchange="toggleVisible(${i})" ${m.visible ? 'checked' : ''}>
+              Visible
+            </label>
+            <button onclick="removeMovie(${i})" style="float:right;">Delete</button>
+            ${m.type === 'series' && m.episodes && m.episodes.length ? `
+              <div class="episode-list">
+                <b>Episodes:</b>
+                <ol>
+                  ${m.episodes.map((ep, epi) => `
+                    <li>
+                      <b>${ep.epTitle}</b> <br>
+                      <small>${ep.epUrl}</small>
+                    </li>
+                  `).join('')}
+                </ol>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      });
+    }
+
+    function toggleVisible(i) {
+      movies[i].visible = !movies[i].visible;
+      saveMovies();
+      renderAdminList();
+    }
+
+    function removeMovie(i) {
+      if (confirm('Delete this movie/series?')) {
+        movies.splice(i, 1);
+        saveMovies();
+        renderAdminList();
+      }
+    }
+
+    // Initial render
+    renderAdminList();
+  </script>
+</body>
+</html>
