@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Admin Panel - Movie/Series</title>
+  <title>Admin Panel - SafuFlix</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    body { background: #181818; color: #fff; font-family: Arial; }
+    body { background: #181818; color: #fff; font-family: 'Roboto', Arial, sans-serif; }
     .container { background: #222; padding: 20px; border-radius: 10px; margin: 20px auto; max-width: 600px;}
     label { display: block; margin-top: 10px; }
     input, select, textarea { width: 100%; padding: 8px; margin-top: 5px; }
@@ -35,6 +36,9 @@
       </label>
       <button type="button" onclick="fetchMetadata()">Fetch Metadata</button>
       <div id="metaResult"></div>
+      <label>Genre/Category (comma separated):
+        <input type="text" id="genre" placeholder="e.g. Action, Drama">
+      </label>
       <label>Video URL (for Movie or for Series Trailer):
         <input type="text" id="url" required>
       </label>
@@ -63,7 +67,6 @@
     // === OMDb API KEY ===
     const OMDB_API_KEY = "95a4bb67"; // <-- Your OMDb API key
 
-    // Movie/Series data will be stored in localStorage for demo
     let movies = JSON.parse(localStorage.getItem('movies') || '[]');
     let fetchedMeta = null;
 
@@ -105,6 +108,10 @@
             <span class="meta-info"><b>Year:</b> ${data.Year} | <b>Genre:</b> ${data.Genre} | <b>IMDB:</b> ${data.imdbRating} | <b>Runtime:</b> ${data.Runtime}</span>
             <div class="meta-info"><b>Plot:</b> ${data.Plot}</div>
           `;
+          // Auto-fill genre field if empty
+          if (data.Genre && !document.getElementById('genre').value) {
+            document.getElementById('genre').value = data.Genre;
+          }
         })
         .catch(() => {
           document.getElementById('metaResult').innerHTML = "Error fetching metadata!";
@@ -118,6 +125,7 @@
       const title = document.getElementById('title').value.trim();
       const url = document.getElementById('url').value.trim();
       const visible = document.getElementById('visible').checked;
+      const genre = document.getElementById('genre').value.trim();
       let season = null, episodes = [];
       if (type === 'series') {
         season = parseInt(document.getElementById('season').value, 10);
@@ -128,7 +136,10 @@
           return { epTitle, epUrl };
         });
       }
-      movies.push({ type, title, url, season, episodes, visible, meta: fetchedMeta });
+      // Merge genre with fetchedMeta
+      let meta = fetchedMeta ? {...fetchedMeta} : {};
+      if (genre) meta.genre = genre;
+      movies.push({ type, title, url, season, episodes, visible, meta });
       saveMovies();
       this.reset();
       document.getElementById('seriesFields').style.display = 'none';
