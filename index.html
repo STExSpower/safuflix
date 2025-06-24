@@ -2,35 +2,107 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Movie/Series List</title>
+  <title>SafuFlix</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    body { background: #181818; color: #fff; font-family: Arial; }
-    .container { background: #222; padding: 20px; border-radius: 10px; margin: 20px auto; max-width: 600px;}
-    .movie-list { margin-top: 30px; }
-    .movie-item { background: #333; padding: 10px; border-radius: 6px; margin-bottom: 20px;}
-    .episode-list { margin-left: 20px; }
-    button { padding: 8px 16px; background: #e50914; color: #fff; border: none; border-radius: 5px; cursor: pointer; margin-right: 5px;}
-    button:hover { background: #b0060f;}
-    input[type="text"] { width: 80%; padding: 5px; }
-    #searchBox { width: 100%; padding: 10px; margin-bottom: 20px; font-size: 18px; border-radius: 5px; border: none;}
-    .meta-img { max-width: 120px; border-radius: 6px; margin-top: 10px;}
-    .meta-info { color: #ffb300; font-size: 15px; margin-top: 5px;}
+    body { background: #141414; color: #fff; font-family: 'Roboto', Arial, sans-serif; margin: 0; }
+    .header { background: #181818; padding: 20px 0 10px 0; text-align: center; }
+    .header h1 { color: #e50914; font-size: 2.5em; margin: 0; letter-spacing: 2px; }
+    .search-bar { text-align: center; margin: 20px 0; }
+    .search-bar input, .search-bar select {
+      padding: 10px; border-radius: 5px; border: none; font-size: 1em; margin: 0 5px;
+    }
+    .categories { text-align: center; margin-bottom: 20px; }
+    .categories button {
+      background: #333; color: #fff; border: none; border-radius: 20px; padding: 8px 18px; margin: 0 5px 10px 5px;
+      cursor: pointer; font-size: 1em; transition: background 0.2s;
+    }
+    .categories button.active, .categories button:hover { background: #e50914; }
+    .grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 30px; }
+    .card {
+      background: #222; border-radius: 12px; width: 260px; box-shadow: 0 2px 8px #0008;
+      overflow: hidden; display: flex; flex-direction: column; margin-bottom: 30px;
+      transition: transform 0.2s;
+    }
+    .card:hover { transform: scale(1.04); }
+    .poster { width: 100%; height: 370px; object-fit: cover; background: #111; }
+    .card-content { padding: 15px; flex: 1; display: flex; flex-direction: column; }
+    .title { font-size: 1.2em; font-weight: bold; margin-bottom: 5px; }
+    .meta { color: #ffb300; font-size: 0.95em; margin-bottom: 8px; }
+    .plot { font-size: 0.98em; color: #ccc; margin-bottom: 10px; }
+    .actions { margin-top: auto; }
+    .actions button, .actions a {
+      background: #e50914; color: #fff; border: none; border-radius: 5px; padding: 7px 14px;
+      margin-right: 7px; margin-bottom: 7px; cursor: pointer; font-size: 0.98em; text-decoration: none; display: inline-block;
+    }
+    .actions button:hover, .actions a:hover { background: #b0060f; }
+    .episodes { margin-top: 10px; }
+    .episode-title { font-weight: bold; color: #fff; }
+    .episode-list { list-style: none; padding: 0; margin: 0; }
+    .episode-list li { margin-bottom: 10px; background: #181818; border-radius: 6px; padding: 8px; }
+    @media (max-width: 700px) {
+      .grid { flex-direction: column; align-items: center; }
+      .card { width: 95vw; }
+      .poster { height: 220px; }
+    }
   </style>
 </head>
 <body>
-  <div class="container movie-list">
-    <h2>Movie/Series List</h2>
-    <input type="text" id="searchBox" placeholder="Search movie, series or episode...">
-    <div id="publicList"></div>
+  <div class="header">
+    <h1>SafuFlix</h1>
   </div>
+  <div class="search-bar">
+    <input type="text" id="searchBox" placeholder="Search movie, series or episode...">
+    <select id="genreFilter">
+      <option value="">All Genres</option>
+    </select>
+  </div>
+  <div class="categories" id="categories"></div>
+  <div class="grid" id="movieGrid"></div>
   <script>
     let movies = JSON.parse(localStorage.getItem('movies') || '[]');
+    let genres = [];
+    // Collect all genres
+    movies.forEach(m => {
+      if (m.meta && m.meta.genre) {
+        m.meta.genre.split(',').forEach(g => {
+          g = g.trim();
+          if (g && !genres.includes(g)) genres.push(g);
+        });
+      }
+    });
+    // Populate genre filter
+    const genreFilter = document.getElementById('genreFilter');
+    genres.forEach(g => {
+      const opt = document.createElement('option');
+      opt.value = g;
+      opt.textContent = g;
+      genreFilter.appendChild(opt);
+    });
 
-    function renderPublicList(filter = "") {
-      const publicList = document.getElementById('publicList');
-      publicList.innerHTML = '';
-      movies.filter(m => m.visible).forEach(m => {
+    function renderCategories() {
+      const catDiv = document.getElementById('categories');
+      catDiv.innerHTML = '';
+      genres.forEach(g => {
+        catDiv.innerHTML += `<button onclick="filterByGenre('${g}')">${g}</button>`;
+      });
+    }
+    renderCategories();
+
+    function filterByGenre(genre) {
+      document.getElementById('genreFilter').value = genre;
+      renderGrid(document.getElementById('searchBox').value.trim().toLowerCase(), genre);
+    }
+
+    function renderGrid(filter = "", genre = "") {
+      const grid = document.getElementById('movieGrid');
+      grid.innerHTML = '';
+      let filtered = movies.filter(m => m.visible);
+      if (genre) {
+        filtered = filtered.filter(m => m.meta && m.meta.genre && m.meta.genre.includes(genre));
+      }
+      filtered.forEach(m => {
         // Search filter
         let match = false;
         if (filter === "") match = true;
@@ -44,59 +116,61 @@
         let metaHtml = '';
         if (m.meta) {
           metaHtml = `
-            ${m.meta.poster ? `<img src="${m.meta.poster}" class="meta-img"><br>` : ''}
-            <span class="meta-info"><b>Year:</b> ${m.meta.year} | <b>Genre:</b> ${m.meta.genre} | <b>IMDB:</b> ${m.meta.imdb} | <b>Runtime:</b> ${m.meta.runtime}</span>
-            <div class="meta-info"><b>Plot:</b> ${m.meta.plot}</div>
+            ${m.meta.poster ? `<img src="${m.meta.poster}" class="poster">` : `<div class="poster"></div>`}
+            <div class="card-content">
+              <div class="title">${m.title}</div>
+              <div class="meta">${m.meta.year ? m.meta.year + ' | ' : ''}${m.meta.genre ? m.meta.genre + ' | ' : ''}${m.meta.imdb ? 'IMDB: ' + m.meta.imdb : ''}</div>
+              <div class="plot">${m.meta.plot || ''}</div>
+          `;
+        } else {
+          metaHtml = `
+            <div class="poster"></div>
+            <div class="card-content">
+              <div class="title">${m.title}</div>
           `;
         }
 
+        let actionsHtml = '';
         if (m.type === 'movie') {
-          publicList.innerHTML += `
-            <div class="movie-item">
-              <b>${m.title}</b> (Movie)<br>
-              ${metaHtml}
-              <video controls width="100%" style="margin-top:8px;">
-                <source src="${m.url}" type="video/mp4">
-                Not supported.
-              </video>
-              <br>
-              <input type="text" value="${m.url}" readonly id="input-${m.url}">
+          actionsHtml = `
+            <div class="actions">
+              <a href="${m.url}" target="_blank">Play</a>
+              <a href="${m.url}" download>Download</a>
               <button onclick="copyLink('${m.url}')">Copy Link</button>
-              <a href="intent://${m.url.replace(/^https?:\/\//, '')}#Intent;type=video/mp4;end">
-                <button>Play with VLC</button>
-              </a>
+              <a href="intent://${m.url.replace(/^https?:\/\//, '')}#Intent;type=video/mp4;end">Play with VLC</a>
             </div>
           `;
         } else if (m.type === 'series') {
-          publicList.innerHTML += `
-            <div class="movie-item">
-              <b>${m.title}</b> (Series, Season ${m.season})<br>
-              ${metaHtml}
-              <i>Trailer:</i>
-              <video controls width="100%" style="margin-top:8px;">
-                <source src="${m.url}" type="video/mp4">
-                Not supported.
-              </video>
-              <div class="episode-list">
-                <b>Episodes:</b>
-                <ol>
-                  ${m.episodes.map((ep, epi) => {
-                    if (filter && !ep.epTitle.toLowerCase().includes(filter) && !m.title.toLowerCase().includes(filter)) return '';
-                    return `
-                    <li>
-                      <b>${ep.epTitle}</b><br>
-                      <input type="text" value="${ep.epUrl}" readonly id="input-${m.title.replace(/\s/g,'')}-ep${epi}">
+          actionsHtml = `
+            <div class="actions">
+              <a href="${m.url}" target="_blank">Play Trailer</a>
+            </div>
+            <div class="episodes">
+              <div class="episode-title">Episodes:</div>
+              <ul class="episode-list">
+                ${m.episodes.map((ep, epi) => `
+                  <li>
+                    <div><b>${ep.epTitle}</b></div>
+                    <div class="actions">
+                      <a href="${ep.epUrl}" target="_blank">Play</a>
+                      <a href="${ep.epUrl}" download>Download</a>
                       <button onclick="copyLink('${ep.epUrl}')">Copy Link</button>
-                      <a href="intent://${ep.epUrl.replace(/^https?:\/\//, '')}#Intent;type=video/mp4;end">
-                        <button>Play with VLC</button>
-                      </a>
-                    </li>
-                  `}).join('')}
-                </ol>
-              </div>
+                      <a href="intent://${ep.epUrl.replace(/^https?:\/\//, '')}#Intent;type=video/mp4;end">Play with VLC</a>
+                    </div>
+                  </li>
+                `).join('')}
+              </ul>
             </div>
           `;
         }
+
+        grid.innerHTML += `
+          <div class="card">
+            ${metaHtml}
+            ${actionsHtml}
+            </div>
+          </div>
+        `;
       });
     }
 
@@ -111,12 +185,14 @@
       alert('Link copied!');
     }
 
-    // Search event
     document.getElementById('searchBox').addEventListener('input', function() {
-      renderPublicList(this.value.trim().toLowerCase());
+      renderGrid(this.value.trim().toLowerCase(), genreFilter.value);
+    });
+    genreFilter.addEventListener('change', function() {
+      renderGrid(document.getElementById('searchBox').value.trim().toLowerCase(), this.value);
     });
 
-    renderPublicList();
+    renderGrid();
   </script>
 </body>
 </html>
